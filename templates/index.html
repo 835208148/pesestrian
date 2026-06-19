@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>行人目标检测系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a73e8, #0d47a1);
+            color: #fff;
+            padding: 20px 40px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .header h1 { font-size: 22px; font-weight: 600; }
+        .header span { font-size: 13px; opacity: 0.85; }
+        .container { max-width: 960px; margin: 24px auto; padding: 0 20px; }
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: #fff;
+            border-radius: 10px 10px 0 0;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        .tab {
+            flex: 1;
+            text-align: center;
+            padding: 14px;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 500;
+            color: #666;
+            border-bottom: 3px solid transparent;
+            transition: all 0.2s;
+            background: #fafafa;
+        }
+        .tab:hover { color: #1a73e8; background: #f5f7fa; }
+        .tab.active { color: #1a73e8; border-bottom-color: #1a73e8; background: #fff; }
+        .panel {
+            display: none;
+            background: #fff;
+            padding: 32px;
+            border-radius: 0 0 10px 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            min-height: 380px;
+        }
+        .panel.active { display: block; }
+        .upload-zone {
+            border: 2px dashed #d0d5dd;
+            border-radius: 12px;
+            padding: 48px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-zone:hover { border-color: #1a73e8; background: #f8faff; }
+        .upload-zone.drag-over { border-color: #1a73e8; background: #e8f0fe; }
+        .upload-zone .icon { font-size: 48px; margin-bottom: 12px; }
+        .upload-zone p { color: #888; font-size: 14px; margin: 4px 0; }
+        .upload-zone .hint { font-size: 12px; color: #bbb; }
+        input[type="file"] { display: none; }
+        .controls { margin-top: 20px; display: flex; gap: 12px; justify-content: center; }
+        button {
+            padding: 10px 28px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: #1a73e8; color: #fff; }
+        .btn-primary:hover { background: #1557b0; }
+        .btn-primary:disabled { background: #a8c7f0; cursor: not-allowed; }
+        .btn-secondary { background: #e8eaed; color: #333; }
+        .btn-secondary:hover { background: #d2d5d9; }
+        .result {
+            margin-top: 24px;
+            display: none;
+        }
+        .result.show { display: block; }
+        .result img, .result video {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .stats {
+            background: #e8f5e9;
+            padding: 12px 20px;
+            border-radius: 6px;
+            margin-bottom: 16px;
+            font-size: 15px;
+            color: #2e7d32;
+        }
+        .error {
+            background: #ffebee;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: #c62828;
+            margin-top: 12px;
+            display: none;
+        }
+        .error.show { display: block; }
+        .spinner {
+            display: none;
+            text-align: center;
+            padding: 24px;
+            color: #888;
+        }
+        .spinner.show { display: block; }
+        .spinner::after {
+            content: "";
+            display: inline-block;
+            width: 24px; height: 24px;
+            border: 3px solid #e0e0e0;
+            border-top-color: #1a73e8;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-left: 8px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .webcam-container { text-align: center; }
+        .webcam-container img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .file-name {
+            margin-top: 10px;
+            font-size: 13px;
+            color: #1a73e8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>🚶 行人目标检测系统</h1>
+    <span>基于 YOLOv8 深度学习模型</span>
+</div>
+
+<div class="container">
+
+    <!-- 标签页 -->
+    <div class="tabs">
+        <div class="tab active" data-tab="image">🖼️ 图片检测</div>
+        <div class="tab" data-tab="video">🎬 视频检测</div>
+        <div class="tab" data-tab="webcam">📷 实时摄像头</div>
+    </div>
+
+    <!-- ========== 图片检测面板 ========== -->
+    <div class="panel active" id="panel-image">
+        <div class="upload-zone" id="drop-image">
+            <div class="icon">📁</div>
+            <p><strong>点击上传</strong>或拖拽图片到此处</p>
+            <p class="hint">支持 JPG / PNG / BMP / WEBP</p>
+        </div>
+        <p class="file-name" id="file-name-image"></p>
+        <input type="file" id="input-image" accept="image/*">
+        <div class="controls">
+            <button id="btn-detect-image" class="btn-primary" disabled>开始检测</button>
+            <button id="btn-clear-image" class="btn-secondary">清除</button>
+        </div>
+        <div class="spinner" id="spinner-image">正在检测中</div>
+        <div class="error" id="error-image"></div>
+        <div class="result" id="result-image">
+            <div class="stats" id="stats-image"></div>
+            <img id="result-img" alt="检测结果">
+        </div>
+    </div>
+
+    <!-- ========== 视频检测面板 ========== -->
+    <div class="panel" id="panel-video">
+        <div class="upload-zone" id="drop-video">
+            <div class="icon">🎥</div>
+            <p><strong>点击上传</strong>或拖拽视频到此处</p>
+            <p class="hint">支持 MP4 / AVI / MOV / MKV / WEBM，最大 200MB</p>
+        </div>
+        <p class="file-name" id="file-name-video"></p>
+        <input type="file" id="input-video" accept="video/*">
+        <div class="controls">
+            <button id="btn-detect-video" class="btn-primary" disabled>开始检测</button>
+            <button id="btn-clear-video" class="btn-secondary">清除</button>
+        </div>
+        <div class="spinner" id="spinner-video">正在检测视频中，请耐心等待</div>
+        <div class="error" id="error-video"></div>
+        <div class="result" id="result-video">
+            <div class="stats" id="stats-video"></div>
+            <video id="result-vid" controls></video>
+        </div>
+    </div>
+
+    <!-- ========== 摄像头面板 ========== -->
+    <div class="panel" id="panel-webcam">
+        <div class="controls" style="margin-bottom: 16px;">
+            <button id="btn-start-webcam" class="btn-primary">开启摄像头</button>
+            <button id="btn-stop-webcam" class="btn-secondary" disabled>关闭摄像头</button>
+        </div>
+        <div class="error" id="error-webcam"></div>
+        <div class="webcam-container" id="webcam-container" style="display:none;">
+            <img id="webcam-stream" alt="摄像头实时检测流">
+        </div>
+    </div>
+
+</div>
+
+<script>
+// ========== 标签页切换 ==========
+document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+        tab.classList.add("active");
+        document.getElementById("panel-" + tab.dataset.tab).classList.add("active");
+    });
+});
+
+// ========== 通用：拖拽 / 点击上传 ==========
+function setupUpload(panelPrefix, inputId, dropId, fileNameId, btnId) {
+    const input = document.getElementById(inputId);
+    const drop = document.getElementById(dropId);
+    const fileName = document.getElementById(fileNameId);
+    const btn = document.getElementById(btnId);
+
+    drop.addEventListener("click", () => input.click());
+    drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("drag-over"); });
+    drop.addEventListener("dragleave", () => drop.classList.remove("drag-over"));
+    drop.addEventListener("drop", e => {
+        e.preventDefault();
+        drop.classList.remove("drag-over");
+        if (e.dataTransfer.files.length) {
+            input.files = e.dataTransfer.files;
+            fileName.textContent = "已选择: " + e.dataTransfer.files[0].name;
+            btn.disabled = false;
+        }
+    });
+    input.addEventListener("change", () => {
+        if (input.files.length) {
+            fileName.textContent = "已选择: " + input.files[0].name;
+            btn.disabled = false;
+        }
+    });
+}
+
+setupUpload("image", "input-image", "drop-image", "file-name-image", "btn-detect-image");
+setupUpload("video", "input-video", "drop-video", "file-name-video", "btn-detect-video");
+
+// ========== 图片检测 ==========
+document.getElementById("btn-detect-image").addEventListener("click", async () => {
+    const file = document.getElementById("input-image").files[0];
+    if (!file) return;
+
+    showLoading("image", true);
+    hide("error-image"); hide("result-image");
+    document.getElementById("btn-detect-image").disabled = true;
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+        const res = await fetch("/api/detect/image", { method: "POST", body: form });
+        const data = await res.json();
+        if (data.error) { showError("image", data.error); return; }
+
+        document.getElementById("stats-image").textContent =
+            `✅ 检测到 ${data.num_people} 个行人`;
+        document.getElementById("result-img").src = data.result_image;
+        show("result-image");
+    } catch (e) {
+        showError("image", "请求失败，请检查服务是否正常运行");
+    } finally {
+        showLoading("image", false);
+        document.getElementById("btn-detect-image").disabled = false;
+    }
+});
+
+// ========== 视频检测 ==========
+document.getElementById("btn-detect-video").addEventListener("click", async () => {
+    const file = document.getElementById("input-video").files[0];
+    if (!file) return;
+
+    showLoading("video", true);
+    hide("error-video"); hide("result-video");
+    document.getElementById("btn-detect-video").disabled = true;
+
+    const form = new FormData();
+    form.append("file", file);
+
+    try {
+        const res = await fetch("/api/detect/video", { method: "POST", body: form });
+        const data = await res.json();
+        if (data.error) { showError("video", data.error); return; }
+
+        document.getElementById("stats-video").textContent =
+            `✅ 总帧数: ${data.stats.total_frames} | 总检测次数: ${data.stats.total_detections} | 平均每帧: ${data.stats.avg_per_frame} 人`;
+        const vid = document.getElementById("result-vid");
+        vid.src = data.result_video;
+        vid.load();
+        show("result-video");
+    } catch (e) {
+        showError("video", "请求失败，请检查服务是否正常运行");
+    } finally {
+        showLoading("video", false);
+        document.getElementById("btn-detect-video").disabled = false;
+    }
+});
+
+// ========== 摄像头实时检测 ==========
+let webcamRunning = false;
+
+document.getElementById("btn-start-webcam").addEventListener("click", () => {
+    if (webcamRunning) return;
+    webcamRunning = true;
+    hide("error-webcam");
+
+    document.getElementById("webcam-container").style.display = "block";
+    document.getElementById("webcam-stream").src = "/api/detect/webcam?" + Date.now();
+    document.getElementById("btn-start-webcam").disabled = true;
+    document.getElementById("btn-stop-webcam").disabled = false;
+});
+
+document.getElementById("btn-stop-webcam").addEventListener("click", () => {
+    webcamRunning = false;
+    document.getElementById("webcam-stream").src = "";
+    document.getElementById("webcam-container").style.display = "none";
+    document.getElementById("btn-start-webcam").disabled = false;
+    document.getElementById("btn-stop-webcam").disabled = true;
+});
+
+// ========== 清除按钮 ==========
+document.getElementById("btn-clear-image").addEventListener("click", () => {
+    document.getElementById("input-image").value = "";
+    document.getElementById("file-name-image").textContent = "";
+    document.getElementById("btn-detect-image").disabled = true;
+    hide("result-image"); hide("error-image");
+});
+document.getElementById("btn-clear-video").addEventListener("click", () => {
+    document.getElementById("input-video").value = "";
+    document.getElementById("file-name-video").textContent = "";
+    document.getElementById("btn-detect-video").disabled = true;
+    hide("result-video"); hide("error-video");
+});
+
+// ========== 辅助函数 ==========
+function show(id) { document.getElementById(id).classList.add("show"); }
+function hide(id) { document.getElementById(id).classList.remove("show"); }
+function showError(panel, msg) { const el = document.getElementById("error-" + panel); el.textContent = "❌ " + msg; show("error-" + panel); }
+function showLoading(panel, on) { document.getElementById("spinner-" + panel).classList.toggle("show", on); }
+</script>
+</body>
+</html>

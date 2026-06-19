@@ -1,0 +1,26 @@
+# ============================================
+# 行人目标检测系统 - 依赖
+# 安装: pip install -r requirements.txt
+# ============================================
+
+# 深度学习
+torch>=2.0.0
+torchvision>=0.15.0
+
+# YOLOv8
+ultralytics>=8.0.0
+
+# Web
+flask>=3.0.0
+
+# 图像/视频
+opencv-python>=4.8.0
+Pillow>=10.0.0
+
+# 数据处理
+numpy>=1.24.0
+pandas>=2.0.0
+matplotlib>=3.7.0
+
+# 工具
+tqdm>=4.65.0
