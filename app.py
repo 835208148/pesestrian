@@ -4,7 +4,6 @@
 访问: http://127.0.0.1:5000
 """
 
-import os
 import time
 import uuid
 from pathlib import Path
@@ -44,7 +43,9 @@ app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024  # 200MB 上限
 
 # ========== 加载模型（启动时一次性加载） ==========
-MODEL_NAME = os.environ.get("MODEL_NAME", "yolov8n.pt")
+# 优先用自训模型 pedestrian_best.pt，没有则回退到 yolov8n.pt
+_best_path = BASE_DIR / "models" / "pedestrian_best.pt"
+MODEL_NAME = str(_best_path) if _best_path.exists() else "yolov8n.pt"
 model = None  # 延迟加载，首次请求时加载
 
 

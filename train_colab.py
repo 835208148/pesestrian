@@ -45,9 +45,9 @@ drive.mount('/content/drive')
 import os
 if not os.path.exists('/content/drive/MyDrive/datasets/pedestrian'):
     from roboflow import Roboflow
-    rf = Roboflow(api_key="你的API_KEY")  # 替换为你的 key
-    project = rf.workspace("people-detection").project("people-detection-general")
-    dataset = project.version(6).download("yolov8")
+    rf = Roboflow(api_key="你的API_KEY")  # 去 roboflow.com 免费注册获取
+    project = rf.workspace("chris-kydks").project("people-detection-2csbw")
+    dataset = project.version(11).download("yolov8")
     print(f"数据集下载到: {dataset.location}")
     # 把它移动到 Google Drive 的固定路径
     import shutil

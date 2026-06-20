@@ -2,6 +2,7 @@
 models/*.pt
 models/*.pth
 models/*.onnx
+yolov8n.pt
 
 # Python
 __pycache__/
