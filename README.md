@@ -19,17 +19,19 @@
 pedestrian-detection-system/
 ├── app.py                 # Flask Web 服务入口
 ├── requirements.txt       # Python 依赖清单
-├── train_colab.py         # Colab 训练脚本
+├── train_colab.py         # Colab 训练脚本（备用）
 ├── utils/
 │   └── detect.py          # 检测核心：图片/视频/摄像头
-├── models/                # 存放训练好的 .pt 模型
+├── models/
+│   └── pedestrian_best.pt # 自训模型（训练后放置）
 ├── templates/
 │   └── index.html         # Web 前端界面
 ├── data/
 │   ├── images/            # 上传的测试图片
 │   └── videos/            # 上传的测试视频
 ├── outputs/               # 检测结果输出
-└── notebooks/             # 额外笔记本文件
+└── notebooks/
+    └── train.ipynb        # Colab 训练笔记本
 ```
 
 ## 快速开始
@@ -54,46 +56,56 @@ python app.py
 
 浏览器打开 `http://127.0.0.1:5000`
 
+> **模型加载策略**：系统优先加载 `models/pedestrian_best.pt`（自训模型），若不存在则自动使用官方预训练 `yolov8n.pt`。无需手动配置。
+
 ### 3. 功能说明
 
 | 功能 | 操作 | 说明 |
 |------|------|------|
-| 图片检测 | 上传图片 → 开始检测 | 返回标注框 + 人数统计 |
-| 视频检测 | 上传视频 → 开始检测 | 逐帧处理，输出标注后视频 |
-| 摄像头实时 | 点击开启摄像头 | 实时检测画面中的行人 |
+| 🖼️ 图片检测 | 上传图片 → 开始检测 | 返回标注框 + 人数统计 |
+| 🎬 视频检测 | 上传视频 → 开始检测 | 逐帧处理，输出标注后视频 |
+| 📷 摄像头实时 | 点击开启摄像头 | 实时检测画面中的行人 |
 
-## 模型训练（Google Colab）
+## 模型训练
 
-### 为什么用 Colab
+### 训练环境
 
-本地无 GPU 无法训练深度学习模型，Colab 提供免费 T4 GPU。
+使用 Google Colab 免费 T4 GPU，避免本地无 GPU 无法训练的问题。
+
+### 数据集
+
+[Roboflow - People Detection v11](https://universe.roboflow.com/chris-kydks/people-detection-2csbw/dataset/11)
+- 训练集：3036 张
+- 验证集：336 张
+- 类别：Person（单类）
 
 ### 训练步骤
 
 1. 打开 [Google Colab](https://colab.research.google.com)
-2. 上传 `train_colab.py`
-3. 运行时 → 更改运行时类型 → 选择 **T4 GPU**
-4. 按脚本顺序执行每一部分
-5. 训练完成后，下载 `pedestrian_best.pt` 到本地 `models/` 目录
-6. 设置环境变量使用自训模型：
+2. 文件 → 上传笔记本 → 选择 `notebooks/train.ipynb`
+3. 运行时 → 更改运行时类型 → **T4 GPU**
+4. 从上到下逐个单元格执行
+5. 训练完成后，模型自动保存到 Google Drive
+6. 下载 `pedestrian_best.pt` 到本地 `models/` 目录
 
-```bash
-# 使用自训模型启动
-set MODEL_NAME=pedestrian_best.pt && python app.py
-```
+### 训练结果
 
-### 数据集
+| 指标 | 数值 |
+|------|:---:|
+| mAP@0.5 | **85.22%** |
+| mAP@0.5:0.95 | **54.22%** |
+| Precision | **85.1%** |
+| Recall | **77.0%** |
+| 模型参数量 | 3,005,843 |
+| GPU | Tesla T4 |
 
-- 推荐 [WiderPerson](http://www.cbsr.ia.ac.cn/users/sfzhang/WiderPerson/) — 专门的行人检测数据集
-- 或通过 Roboflow 下载公开行人数据集
-
-## 检测效果指标说明
+## 指标说明
 
 | 指标 | 含义 |
 |------|------|
-| mAP@0.5 | 交并比 50% 时的平均精度 |
-| mAP@0.5:0.95 | 多阈值下的综合精度 |
-| Precision | 检测结果中有多少是对的 |
+| mAP@0.5 | 交并比 50% 时的平均精度（常用检测指标） |
+| mAP@0.5:0.95 | 0.5 到 0.95 多阈值下的综合精度（更严苛） |
+| Precision | 检测结果中有多少是真正的人 |
 | Recall | 实际行人中有多少被检测到 |
 
 ## Author
